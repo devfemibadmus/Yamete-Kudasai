@@ -9,6 +9,8 @@ use std::time::{Duration, Instant};
 
 use crate::platform;
 
+const CUSTOM_SOUND_FILE_NAME: &str = "yamete-kudasai-custom-sound.mp3";
+
 pub const EVENT_FILE_NAME: &str = "terminal-errors.log";
 pub const SOUND_FILE_NAME: &str = "yamete-kudasai-sound.mp3";
 const LOCK_FILE_NAME: &str = "agent.lock";
@@ -23,7 +25,10 @@ pub fn run() -> i32 {
     let args: Vec<String> = env::args().skip(1).collect();
     let cmd = args.first().map(|v| v.as_str());
     let result = match cmd {
-        Some("--install") => install_and_start(),
+        Some("--install") => {
+            let sound_url = parse_sound_arg(&args);
+            install_and_start(sound_url.as_deref())
+        }
         Some("--uninstall") => uninstall(),
         Some("--agent") => run_agent_loop(),
         Some("--status") => status(),
@@ -50,16 +55,29 @@ fn print_usage() {
     let exe = env::args()
         .next()
         .unwrap_or_else(|| String::from("yamete-kudasai-system"));
-    println!("Usage: {exe} <command>");
+    println!("Usage: {exe} <command> [options]");
     println!();
     println!("Commands:");
-    println!("  --install     Install agent, configure startup, and start background watcher");
-    println!("  --uninstall   Remove startup config and shell hooks");
-    println!("  --status      Show current installation status");
-    println!("  --self-test   Trigger a test sound to verify audio playback");
+    println!(
+        "  --install              Install agent, configure startup, and start background watcher"
+    );
+    println!("  --install --sound URL  Install with a custom sound file from a URL");
+    println!("  --uninstall            Remove startup config and shell hooks");
+    println!("  --status               Show current installation status");
+    println!("  --self-test            Trigger a test sound to verify audio playback");
 }
 
-fn install_and_start() -> Result<String, String> {
+fn parse_sound_arg(args: &[String]) -> Option<String> {
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        if arg == "--sound" {
+            return iter.next().cloned();
+        }
+    }
+    None
+}
+
+fn install_and_start(sound_url: Option<&str>) -> Result<String, String> {
     let install_dir = platform::install_dir()?;
     fs::create_dir_all(&install_dir).map_err(|err| {
         format!(
@@ -73,8 +91,19 @@ fn install_and_start() -> Result<String, String> {
     let installed_exe = install_dir.join(platform::installed_exe_name());
     copy_if_needed(&current_exe, &installed_exe)?;
 
-    let sound_path = install_dir.join(SOUND_FILE_NAME);
-    write_sound_file(&sound_path)?;
+    // Handle sound: custom URL takes priority, otherwise use built-in.
+    let sound_msg = if let Some(url) = sound_url {
+        let custom_path = install_dir.join(CUSTOM_SOUND_FILE_NAME);
+        download_sound(url, &custom_path)?;
+        // Also write default as fallback.
+        let default_path = install_dir.join(SOUND_FILE_NAME);
+        write_sound_file(&default_path)?;
+        format!("Custom sound: {}", custom_path.display())
+    } else {
+        let sound_path = install_dir.join(SOUND_FILE_NAME);
+        write_sound_file(&sound_path)?;
+        String::from("Sound: built-in default")
+    };
 
     let event_file = install_dir.join(EVENT_FILE_NAME);
     ensure_file_exists(&event_file)?;
@@ -84,8 +113,9 @@ fn install_and_start() -> Result<String, String> {
     platform::start_agent(&installed_exe)?;
 
     Ok(format!(
-        "Installed successfully.\nInstall dir: {}\nAgent startup: enabled\nError log: {}",
+        "Installed successfully.\nInstall dir: {}\n{}\nAgent startup: enabled\nError log: {}",
         install_dir.display(),
+        sound_msg,
         event_file.display()
     ))
 }
@@ -140,7 +170,7 @@ fn status() -> Result<String, String> {
 fn self_test() -> Result<String, String> {
     let install_dir = platform::install_dir()?;
     let event_file = install_dir.join(EVENT_FILE_NAME);
-    let sound = install_dir.join(SOUND_FILE_NAME);
+    let sound = resolve_sound_path(&install_dir);
     ensure_file_exists(&event_file)?;
 
     let line = format!("{}|self-test|1|manual self test", chrono_like_timestamp());
@@ -156,7 +186,8 @@ fn self_test() -> Result<String, String> {
         .map_err(|err| format!("Self-test audio playback failed: {err}"))?;
 
     Ok(format!(
-        "self-test: event appended and direct audio playback executed.\nlog: {}",
+        "self-test: event appended and direct audio playback executed.\nSound: {}\nlog: {}",
+        sound.display(),
         event_file.display()
     ))
 }
@@ -172,9 +203,11 @@ fn run_agent_loop() -> Result<String, String> {
 
     let event_file = install_dir.join(EVENT_FILE_NAME);
     ensure_file_exists(&event_file)?;
-    let sound_path = install_dir.join(SOUND_FILE_NAME);
-    if !sound_path.exists() {
-        write_sound_file(&sound_path)?;
+    let sound_path = resolve_sound_path(&install_dir);
+    // Ensure the default sound exists as fallback.
+    let default_sound = install_dir.join(SOUND_FILE_NAME);
+    if !default_sound.exists() {
+        write_sound_file(&default_sound)?;
     }
 
     let lock_file = OpenOptions::new()
@@ -224,6 +257,43 @@ fn run_agent_loop() -> Result<String, String> {
 
         thread::sleep(Duration::from_millis(250));
     }
+}
+
+/// Prefer custom sound if it exists, otherwise use default.
+fn resolve_sound_path(install_dir: &Path) -> PathBuf {
+    let custom = install_dir.join(CUSTOM_SOUND_FILE_NAME);
+    if custom.exists() {
+        custom
+    } else {
+        install_dir.join(SOUND_FILE_NAME)
+    }
+}
+
+fn download_sound(url: &str, dest: &Path) -> Result<(), String> {
+    println!("Downloading custom sound from: {url}");
+    let response = ureq::get(url)
+        .call()
+        .map_err(|err| format!("Failed to download sound from '{url}': {err}"))?;
+
+    let mut bytes = Vec::new();
+    response
+        .into_body()
+        .as_reader()
+        .read_to_end(&mut bytes)
+        .map_err(|err| format!("Failed to read sound data: {err}"))?;
+
+    if bytes.is_empty() {
+        return Err(format!("Downloaded file from '{url}' is empty."));
+    }
+
+    fs::write(dest, &bytes)
+        .map_err(|err| format!("Failed to save sound to '{}': {err}", dest.display()))?;
+    println!(
+        "Custom sound saved to: {} ({} bytes)",
+        dest.display(),
+        bytes.len()
+    );
+    Ok(())
 }
 
 fn install_shell_hooks(event_file: &Path) -> Result<(), String> {
