@@ -2,7 +2,6 @@
 name = "yamete-kudasai-system"
 version = "0.1.0"
 edition = "2021"
-build = "build.rs"
 
 [lib]
 name = "yamete_kudasai_player"
@@ -13,4 +12,9 @@ dirs = "6.0.0"
 fs2 = "0.4.3"
 regex = "1.12.2"
 rodio = { version = "0.21.1", features = ["mp3"] }
+
+[target.'cfg(windows)'.dependencies]
 winreg = "0.55.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

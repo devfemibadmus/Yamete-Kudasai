@@ -1,0 +1,129 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  # ──────────────────────────────────────────────
+  # 1. Determine the next version tag
+  # ──────────────────────────────────────────────
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.bump.outputs.tag }}
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need full history for tags
+
+      - name: Compute next version
+        id: bump
+        shell: bash
+        run: |
+          # Get the latest semver tag (e.g. v1.2.3), default to v0.0.0
+          latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          if [ -z "$latest" ]; then
+            latest="v0.0.0"
+          fi
+
+          # Strip the leading 'v'
+          ver="${latest#v}"
+
+          # Split into major.minor.patch
+          IFS='.' read -r major minor patch <<< "$ver"
+
+          # Auto-increment patch
+          patch=$((patch + 1))
+          next_version="${major}.${minor}.${patch}"
+          next_tag="v${next_version}"
+
+          echo "Previous tag: $latest"
+          echo "Next tag: $next_tag"
+          echo "tag=$next_tag" >> "$GITHUB_OUTPUT"
+          echo "version=$next_version" >> "$GITHUB_OUTPUT"
+
+  # ──────────────────────────────────────────────
+  # 2. Build release binaries (Windows / Linux / macOS)
+  # ──────────────────────────────────────────────
+  build:
+    needs: version
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary: yamete-kudasai-system.exe
+            asset_name: yamete-kudasai-system-windows-x86_64.exe
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary: yamete-kudasai-system
+            asset_name: yamete-kudasai-system-linux-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary: yamete-kudasai-system
+            asset_name: yamete-kudasai-system-macos-aarch64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux audio dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+
+      - name: Update Cargo.toml version
+        shell: bash
+        run: |
+          version="${{ needs.version.outputs.version }}"
+          # Cross-platform sed: use temp file approach
+          sed "s/^version = \".*\"/version = \"${version}\"/" Cargo.toml > Cargo.toml.tmp
+          mv Cargo.toml.tmp Cargo.toml
+
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Rename binary
+        shell: bash
+        run: |
+          cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" "${{ matrix.asset_name }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}
+
+  # ──────────────────────────────────────────────
+  # 3. Create GitHub Release with all binaries
+  # ──────────────────────────────────────────────
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: Release ${{ needs.version.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            artifacts/yamete-kudasai-system-windows-x86_64.exe/*
+            artifacts/yamete-kudasai-system-linux-x86_64/*
+            artifacts/yamete-kudasai-system-macos-aarch64/*

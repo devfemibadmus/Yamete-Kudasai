@@ -1,1 +1,4 @@
+# Build output
 target/
+debug/
+
