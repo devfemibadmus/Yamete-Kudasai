@@ -1,0 +1,44 @@
+[
+    {
+        "name": "Yamete Kudasai (Default)",
+        "id": "yamete-kudasai",
+        "description": "The classic default sound. Weep at your command failures.",
+        "url": "https://www.myinstants.com/media/sounds/yamete-kudasai.mp3",
+        "author": "System"
+    },
+    {
+        "name": "Vine Boom",
+        "id": "vine-boom",
+        "description": "Dramatic boom whenever a command fails.",
+        "url": "https://www.myinstants.com/media/sounds/vine-boom.mp3",
+        "author": "Community"
+    },
+    {
+        "name": "Emotional Damage",
+        "id": "emotional-damage",
+        "description": "When the compiler hits you where it hurts.",
+        "url": "https://www.myinstants.com/media/sounds/emotional-damage-meme.mp3",
+        "author": "Community"
+    },
+    {
+        "name": "FAHHHHHHHH",
+        "id": "fahhhhh",
+        "description": "The ultimate frustration yell.",
+        "url": "https://www.myinstants.com/media/sounds/fahhhhh.mp3",
+        "author": "Community"
+    },
+    {
+        "name": "Bruh",
+        "id": "bruh",
+        "description": "A calm, disappointed reaction to your failing tests.",
+        "url": "https://www.myinstants.com/media/sounds/movie_1.mp3",
+        "author": "Community"
+    },
+    {
+        "name": "Sad Trombone",
+        "id": "sad-trombone",
+        "description": "Womp womp...",
+        "url": "https://www.myinstants.com/media/sounds/sadtrombone.mp3",
+        "author": "Community"
+    }
+]
