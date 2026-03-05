@@ -590,6 +590,62 @@ body {
     border-bottom: none;
 }
 
+/* ── Sounds Grid ── */
+
+.sounds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.sound-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.sound-card:hover {
+    border-color: rgba(6,182,212,0.4);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    transform: translateY(-2px);
+}
+
+.sound-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+}
+
+.sound-card h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.sound-author {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.05);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+}
+
+.sound-card p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    min-height: 2.7rem;
+}
+
+.code-block-sm {
+    padding: 0.5rem 0.75rem;
+    background: #08080c;
+}
+
 /* ── Platforms Grid ── */
 
 .platforms-grid {
