@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yamete Kudasai — Terminal Error Sound Agent</title>
+    <meta name="description" content="Cross-platform terminal error listener that plays a sound when your commands fail. Available for Windows, Linux, and macOS.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Animated background -->
+    <div class="bg-grid"></div>
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+    <div class="glow glow-3"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="nav-icon">⚡</span>
+            <span class="nav-title">Yamete Kudasai</span>
+        </div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#install">Install</a>
+            <a href="#platforms">Platforms</a>
+            <a href="https://github.com/devfemibadmus/Yamete-kudasai" class="nav-github" target="_blank" rel="noopener">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                GitHub
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <div class="hero-badge">🎵 Open Source Terminal Tool</div>
+        <h1 class="hero-title">
+            <span class="hero-line">Your terminal</span>
+            <span class="hero-line gradient-text">screams back.</span>
+        </h1>
+        <p class="hero-subtitle">
+            A cross-platform agent that listens for terminal errors and plays a sound when your commands fail.
+            Because every mistake deserves a reaction.
+        </p>
+        <div class="hero-actions">
+            <a href="#install" class="btn btn-primary">
+                <span class="btn-icon">⬇</span> Get Started
+            </a>
+            <a href="https://github.com/devfemibadmus/Yamete-kudasai" class="btn btn-secondary" target="_blank" rel="noopener">
+                View on GitHub
+            </a>
+        </div>
+
+        <!-- Terminal Demo -->
+        <div class="terminal-demo">
+            <div class="terminal-chrome">
+                <div class="terminal-dots">
+                    <span class="dot dot-red"></span>
+                    <span class="dot dot-yellow"></span>
+                    <span class="dot dot-green"></span>
+                </div>
+                <span class="terminal-title">terminal</span>
+            </div>
+            <div class="terminal-body">
+                <div class="term-line">
+                    <span class="term-prompt">$</span>
+                    <span class="term-cmd" id="typewriter"></span>
+                    <span class="term-cursor">▋</span>
+                </div>
+                <div class="term-line term-output" id="term-output-1"></div>
+                <div class="term-line term-output" id="term-output-2"></div>
+                <div class="term-line term-sound" id="term-sound"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Features Section -->
+    <section id="features" class="section">
+        <div class="section-header">
+            <h2 class="section-title">How it works</h2>
+            <p class="section-subtitle">Three simple steps. Zero configuration needed.</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🔧</div>
+                <h3>Install</h3>
+                <p>Run a single command. The agent copies itself to your system, registers auto-start, and injects shell hooks.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">👁️</div>
+                <h3>Watch</h3>
+                <p>The background agent monitors a log file. Shell hooks (PowerShell, Bash, Zsh) automatically log every failed command.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔊</div>
+                <h3>React</h3>
+                <p>When an error is detected, the agent plays a sound. Use the built-in audio or set your own with <code>--sound</code>.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Install Section -->
+    <section id="install" class="section section-dark">
+        <div class="section-header">
+            <h2 class="section-title">Installation</h2>
+            <p class="section-subtitle">Download the binary for your platform and run it.</p>
+        </div>
+
+        <div class="install-steps">
+            <div class="install-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Download</h3>
+                    <p>Grab the latest release from GitHub:</p>
+                    <a href="https://github.com/devfemibadmus/Yamete-kudasai/releases/latest" class="btn btn-outline" target="_blank" rel="noopener">
+                        Latest Release →
+                    </a>
+                </div>
+            </div>
+            <div class="install-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Install &amp; Start</h3>
+                    <p>Run the binary with the install flag:</p>
+                    <div class="code-block">
+                        <code>yamete-kudasai-system --install</code>
+                        <button class="copy-btn" onclick="copyCode(this)" title="Copy">📋</button>
+                    </div>
+                </div>
+            </div>
+            <div class="install-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Custom Sound (Optional)</h3>
+                    <p>Use your own sound file from a URL:</p>
+                    <div class="code-block">
+                        <code>yamete-kudasai-system --install --sound https://example.com/my-sound.mp3</code>
+                        <button class="copy-btn" onclick="copyCode(this)" title="Copy">📋</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="commands-table">
+            <h3>All Commands</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Command</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>--install</code></td>
+                        <td>Install and start the background agent</td>
+                    </tr>
+                    <tr>
+                        <td><code>--install --sound URL</code></td>
+                        <td>Install with a custom sound from a URL</td>
+                    </tr>
+                    <tr>
+                        <td><code>--uninstall</code></td>
+                        <td>Remove startup config and shell hooks</td>
+                    </tr>
+                    <tr>
+                        <td><code>--status</code></td>
+                        <td>Show installation status</td>
+                    </tr>
+                    <tr>
+                        <td><code>--self-test</code></td>
+                        <td>Play a test sound</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Platforms Section -->
+    <section id="platforms" class="section">
+        <div class="section-header">
+            <h2 class="section-title">Cross-Platform</h2>
+            <p class="section-subtitle">Built in Rust. Runs everywhere.</p>
+        </div>
+        <div class="platforms-grid">
+            <div class="platform-card">
+                <div class="platform-icon">🪟</div>
+                <h3>Windows</h3>
+                <p>Registry auto-start, PowerShell hooks</p>
+                <span class="platform-file">yamete-kudasai-system-windows-x86_64.exe</span>
+            </div>
+            <div class="platform-card">
+                <div class="platform-icon">🐧</div>
+                <h3>Linux</h3>
+                <p>XDG autostart, Bash &amp; Zsh hooks</p>
+                <span class="platform-file">yamete-kudasai-system-linux-x86_64</span>
+            </div>
+            <div class="platform-card">
+                <div class="platform-icon">🍎</div>
+                <h3>macOS</h3>
+                <p>LaunchAgent auto-start, Zsh hooks</p>
+                <span class="platform-file">yamete-kudasai-system-macos-aarch64</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Build from Source -->
+    <section class="section section-dark">
+        <div class="section-header">
+            <h2 class="section-title">Build from Source</h2>
+            <p class="section-subtitle">Requires Rust toolchain.</p>
+        </div>
+        <div class="build-block">
+            <div class="code-block code-block-lg">
+                <code>git clone https://github.com/devfemibadmus/Yamete-kudasai.git
+cd Yamete-kudasai
+cargo build --release</code>
+                <button class="copy-btn" onclick="copyCode(this)" title="Copy">📋</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <span class="nav-icon">⚡</span>
+                <span>Yamete Kudasai</span>
+            </div>
+            <p class="footer-tagline">Because your terminal deserves a voice.</p>
+            <div class="footer-links">
+                <a href="https://github.com/devfemibadmus/Yamete-kudasai" target="_blank" rel="noopener">GitHub</a>
+                <a href="https://github.com/devfemibadmus/Yamete-kudasai/releases" target="_blank" rel="noopener">Releases</a>
+                <a href="https://github.com/devfemibadmus/Yamete-kudasai/issues" target="_blank" rel="noopener">Issues</a>
+            </div>
+            <p class="footer-license">MIT License · Built with 🦀 Rust</p>
+        </div>
+    </footer>
+
+    <script>
+        // Typewriter terminal animation
+        const commands = [
+            { cmd: 'npm run build', outputs: ['Error: Module not found: ./components/App', 'Build failed with 1 error.'], sound: '🔊 ♪ yamete kudasai~' },
+            { cmd: 'python train.py', outputs: ['Traceback (most recent call last):', '  RuntimeError: CUDA out of memory'], sound: '🔊 ♪ yamete kudasai~' },
+            { cmd: 'cargo test', outputs: ['error[E0308]: mismatched types', 'test result: FAILED. 0 passed; 1 failed'], sound: '🔊 ♪ yamete kudasai~' },
+            { cmd: 'git push origin main', outputs: ['error: failed to push some refs to origin', '! [rejected] main -> main (non-fast-forward)'], sound: '🔊 ♪ yamete kudasai~' },
+        ];
+
+        let currentCmd = 0;
+
+        async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        async function typeText(el, text, speed = 50) {
+            el.textContent = '';
+            for (const char of text) {
+                el.textContent += char;
+                await sleep(speed);
+            }
+        }
+
+        async function animateTerminal() {
+            const typewriter = document.getElementById('typewriter');
+            const output1 = document.getElementById('term-output-1');
+            const output2 = document.getElementById('term-output-2');
+            const sound = document.getElementById('term-sound');
+
+            while (true) {
+                const c = commands[currentCmd % commands.length];
+                currentCmd++;
+
+                // Clear
+                output1.textContent = '';
+                output1.style.opacity = '0';
+                output2.textContent = '';
+                output2.style.opacity = '0';
+                sound.textContent = '';
+                sound.style.opacity = '0';
+
+                // Type command
+                await typeText(typewriter, c.cmd, 60);
+                await sleep(500);
+
+                // Show outputs
+                output1.textContent = c.outputs[0];
+                output1.style.opacity = '1';
+                await sleep(300);
+                output2.textContent = c.outputs[1];
+                output2.style.opacity = '1';
+                await sleep(600);
+
+                // Sound reaction
+                sound.textContent = c.sound;
+                sound.style.opacity = '1';
+                sound.classList.add('pulse');
+                await sleep(3000);
+                sound.classList.remove('pulse');
+
+                await sleep(1000);
+            }
+        }
+
+        // Copy button
+        function copyCode(btn) {
+            const code = btn.parentElement.querySelector('code').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                btn.textContent = '✓';
+                setTimeout(() => btn.textContent = '📋', 1500);
+            });
+        }
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', e => {
+                e.preventDefault();
+                document.querySelector(a.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        // Start animation
+        animateTerminal();
+    </script>
+</body>
+</html>
