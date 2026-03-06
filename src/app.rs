@@ -9,8 +9,6 @@ use std::time::{Duration, Instant};
 
 use crate::platform;
 
-const CUSTOM_SOUND_FILE_NAME: &str = "yamete-kudasai-custom-sound.mp3";
-
 pub const EVENT_FILE_NAME: &str = "terminal-errors.log";
 pub const SOUND_FILE_NAME: &str = "yamete-kudasai-sound.mp3";
 const LOCK_FILE_NAME: &str = "agent.lock";
@@ -19,7 +17,6 @@ pub const MARKER_END: &str = "# <<< YAMETE_KUDASAI <<<";
 const ERROR_PATTERN: &str =
     r"(?i)\b(error|exception|traceback|failed|panic|fatal|command not found)\b";
 const COOLDOWN_MS: u64 = 2000;
-const SOUND_BYTES: &[u8] = include_bytes!("../yamete-kudasai-sound.mp3");
 
 pub fn run() -> i32 {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -27,7 +24,13 @@ pub fn run() -> i32 {
     let result = match cmd {
         Some("--install") => {
             let sound_url = parse_sound_arg(&args);
-            install_and_start(sound_url.as_deref())
+            if sound_url.is_none() {
+                Err(String::from(
+                    "Error: --sound <URL> is required for installation.",
+                ))
+            } else {
+                install_and_start(sound_url.as_deref())
+            }
         }
         Some("--uninstall") => uninstall(),
         Some("--agent") => run_agent_loop(),
@@ -89,27 +92,26 @@ fn install_and_start(sound_url: Option<&str>) -> Result<String, String> {
     let current_exe =
         env::current_exe().map_err(|err| format!("Failed to get current exe path: {err}"))?;
     let installed_exe = install_dir.join(platform::installed_exe_name());
+
+    // Stop existing agent before copying to avoid "Access denied" (file lock).
+    let _ = platform::stop_agent();
+    // Small delay to ensure process is gone.
+    thread::sleep(Duration::from_millis(500));
+
     copy_if_needed(&current_exe, &installed_exe)?;
 
-    // Handle sound: custom URL takes priority, otherwise use built-in.
-    let sound_msg = if let Some(url) = sound_url {
-        let custom_path = install_dir.join(CUSTOM_SOUND_FILE_NAME);
-        download_sound(url, &custom_path)?;
-        // Also write default as fallback.
-        let default_path = install_dir.join(SOUND_FILE_NAME);
-        write_sound_file(&default_path)?;
-        format!("Custom sound: {}", custom_path.display())
-    } else {
-        let sound_path = install_dir.join(SOUND_FILE_NAME);
-        write_sound_file(&sound_path)?;
-        String::from("Sound: built-in default")
-    };
+    // Handle sound: custom URL is now mandatory.
+    let url = sound_url.ok_or_else(|| String::from("--sound <URL> is required."))?;
+    let sound_path = install_dir.join(SOUND_FILE_NAME);
+    download_sound(url, &sound_path)?;
+    let sound_msg = format!("Sound installed to: {}", sound_path.display());
 
     let event_file = install_dir.join(EVENT_FILE_NAME);
     ensure_file_exists(&event_file)?;
 
     platform::configure_startup(&installed_exe)?;
     install_shell_hooks(&event_file)?;
+
     platform::start_agent(&installed_exe)?;
 
     Ok(format!(
@@ -131,7 +133,6 @@ fn uninstall() -> Result<String, String> {
 fn status() -> Result<String, String> {
     let install_dir = platform::install_dir()?;
     let exe = install_dir.join(platform::installed_exe_name());
-    let sound = install_dir.join(SOUND_FILE_NAME);
     let event_file = install_dir.join(EVENT_FILE_NAME);
 
     let startup_line = platform::startup_status();
@@ -155,11 +156,13 @@ fn status() -> Result<String, String> {
         0
     };
 
+    let active_sound = resolve_sound_path(&install_dir);
+
     Ok(format!(
-            "status: ok\ninstall_dir: {}\ninstalled_exe_exists: {}\nsound_exists: {}\nevent_file_exists: {}\nevent_file_size: {}\n{}\nprofile_hooks: {}",
+            "status: ok\ninstall_dir: {}\ninstalled_exe_exists: {}\nsound_path: {}\nevent_file_exists: {}\nevent_file_size: {} bytes\n{}\nprofile_hooks: {}",
             install_dir.display(),
             exe.exists(),
-            sound.exists(),
+            active_sound.display(),
             event_file.exists(),
             log_size,
             startup_line,
@@ -203,11 +206,12 @@ fn run_agent_loop() -> Result<String, String> {
 
     let event_file = install_dir.join(EVENT_FILE_NAME);
     ensure_file_exists(&event_file)?;
-    let sound_path = resolve_sound_path(&install_dir);
-    // Ensure the default sound exists as fallback.
-    let default_sound = install_dir.join(SOUND_FILE_NAME);
-    if !default_sound.exists() {
-        write_sound_file(&default_sound)?;
+    let sound_path = install_dir.join(SOUND_FILE_NAME);
+    if !sound_path.exists() {
+        return Err(format!(
+            "Sound file not found: {}. Please re-run --install --sound <URL>",
+            sound_path.display()
+        ));
     }
 
     let lock_file = OpenOptions::new()
@@ -222,10 +226,12 @@ fn run_agent_loop() -> Result<String, String> {
     }
 
     let matcher = Regex::new(ERROR_PATTERN).map_err(|err| format!("Invalid error regex: {err}"))?;
+    // Start cursor at current end-of-file so we only react to NEW events, not replaying history.
     let mut cursor = fs::metadata(&event_file)
         .map_err(|err| format!("Failed to stat event file: {err}"))?
         .len();
-    let mut last_played = Instant::now() - Duration::from_millis(COOLDOWN_MS);
+    // Allow first real error to play immediately (subtract cooldown from epoch so elapsed > COOLDOWN_MS).
+    let mut last_played = Instant::now() - Duration::from_millis(COOLDOWN_MS + 1);
 
     loop {
         let file_len = fs::metadata(&event_file)
@@ -249,7 +255,8 @@ fn run_agent_loop() -> Result<String, String> {
                 }
 
                 last_played = Instant::now();
-                if let Err(error) = yamete_kudasai_player::play_file(&sound_path, 1.0) {
+                let current_sound = resolve_sound_path(&install_dir);
+                if let Err(error) = yamete_kudasai_player::play_file(&current_sound, 1.0) {
                     eprintln!("Playback failed: {error}");
                 }
             }
@@ -259,14 +266,9 @@ fn run_agent_loop() -> Result<String, String> {
     }
 }
 
-/// Prefer custom sound if it exists, otherwise use default.
+/// Use the standard sound filename.
 fn resolve_sound_path(install_dir: &Path) -> PathBuf {
-    let custom = install_dir.join(CUSTOM_SOUND_FILE_NAME);
-    if custom.exists() {
-        custom
-    } else {
-        install_dir.join(SOUND_FILE_NAME)
-    }
+    install_dir.join(SOUND_FILE_NAME)
 }
 
 fn download_sound(url: &str, dest: &Path) -> Result<(), String> {
@@ -484,22 +486,6 @@ fn ensure_file_exists(path: &Path) -> Result<(), String> {
         .append(true)
         .open(path)
         .map_err(|err| format!("Failed to create '{}': {err}", path.display()))?;
-    Ok(())
-}
-
-fn write_sound_file(path: &Path) -> Result<(), String> {
-    let should_write = if path.exists() {
-        fs::metadata(path)
-            .map(|meta| meta.len() != SOUND_BYTES.len() as u64)
-            .unwrap_or(true)
-    } else {
-        true
-    };
-
-    if should_write {
-        fs::write(path, SOUND_BYTES)
-            .map_err(|err| format!("Failed to write sound file '{}': {err}", path.display()))?;
-    }
     Ok(())
 }
 

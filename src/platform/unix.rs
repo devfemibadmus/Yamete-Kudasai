@@ -49,16 +49,19 @@ pub fn remove_startup() -> Result<(), String> {
 
 pub fn startup_status() -> String {
     if cfg!(target_os = "macos") {
-        let plist = dirs::home_dir()
-            .map(|h| h.join("Library").join("LaunchAgents").join(format!("{APP_ID}.plist")));
+        let plist = dirs::home_dir().map(|h| {
+            h.join("Library")
+                .join("LaunchAgents")
+                .join(format!("{APP_ID}.plist"))
+        });
         match plist {
             Some(path) if path.exists() => format!("startup: {}", path.display()),
             Some(_) => String::from("startup: (missing)"),
             None => String::from("startup: (unknown home)"),
         }
     } else {
-        let desktop_file = dirs::config_dir()
-            .map(|c| c.join("autostart").join(format!("{APP_ID}.desktop")));
+        let desktop_file =
+            dirs::config_dir().map(|c| c.join("autostart").join(format!("{APP_ID}.desktop")));
         match desktop_file {
             Some(path) if path.exists() => format!("startup: {}", path.display()),
             Some(_) => String::from("startup: (missing)"),
@@ -75,7 +78,6 @@ pub fn start_agent(installed_exe: &Path) -> Result<(), String> {
         .stdout(Stdio::null())
         .stderr(Stdio::null());
 
-    // Use setsid to detach the child from the current session on Unix.
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
@@ -93,23 +95,26 @@ pub fn start_agent(installed_exe: &Path) -> Result<(), String> {
     Ok(())
 }
 
+pub fn stop_agent() -> Result<(), String> {
+    let _ = Command::new("pkill")
+        .args(["-f", installed_exe_name()])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    Ok(())
+}
+
 pub fn install_platform_shell_hooks(_event_file: &Path) -> Result<(), String> {
-    // Bash hook is handled in the shared app module.
-    // No additional platform-specific shell hooks on Unix.
     Ok(())
 }
 
 pub fn remove_platform_shell_hooks() -> Result<(), String> {
-    // Bash hook removal is handled in the shared app module.
     Ok(())
 }
 
 pub fn platform_profile_hooks_state() -> Vec<String> {
-    // No platform-specific profile hooks on Unix (bash is shared).
     Vec::new()
 }
-
-// --- Linux autostart via XDG .desktop file ---
 
 fn configure_startup_linux(installed_exe: &Path) -> Result<(), String> {
     let autostart = dirs::config_dir()
@@ -133,8 +138,6 @@ fn configure_startup_linux(installed_exe: &Path) -> Result<(), String> {
     fs::write(&desktop_file, content)
         .map_err(|err| format!("Failed to write autostart desktop file: {err}"))
 }
-
-// --- macOS autostart via LaunchAgent plist ---
 
 fn configure_startup_macos(installed_exe: &Path) -> Result<(), String> {
     let launch_agents = dirs::home_dir()
@@ -167,6 +170,5 @@ fn configure_startup_macos(installed_exe: &Path) -> Result<(), String> {
         app_id = APP_ID,
         exe = installed_exe.display()
     );
-    fs::write(&plist, content)
-        .map_err(|err| format!("Failed to write LaunchAgent plist: {err}"))
+    fs::write(&plist, content).map_err(|err| format!("Failed to write LaunchAgent plist: {err}"))
 }

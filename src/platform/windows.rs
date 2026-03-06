@@ -9,8 +9,7 @@ use winreg::RegKey;
 use std::os::windows::process::CommandExt;
 
 use crate::app::{
-    has_marker, ps_single_quote, remove_marked_block, upsert_marked_block, MARKER_END,
-    MARKER_START,
+    has_marker, ps_single_quote, remove_marked_block, upsert_marked_block, MARKER_END, MARKER_START,
 };
 
 const INSTALL_DIR_NAME: &str = "YameteKudasai";
@@ -78,6 +77,25 @@ pub fn start_agent(installed_exe: &Path) -> Result<(), String> {
     command
         .spawn()
         .map_err(|err| format!("Failed to start agent: {err}"))?;
+    Ok(())
+}
+
+pub fn stop_agent() -> Result<(), String> {
+    // Forcefully kill any running agent process by name.
+    // We ignore failures (e.g. if no process is running).
+    let my_pid = std::process::id();
+    let _ = Command::new("taskkill")
+        .args([
+            "/F",
+            "/IM",
+            installed_exe_name(),
+            "/FI",
+            &format!("PID ne {my_pid}"),
+        ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .creation_flags(CREATE_NO_WINDOW)
+        .status();
     Ok(())
 }
 
