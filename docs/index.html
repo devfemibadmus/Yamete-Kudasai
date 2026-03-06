@@ -81,7 +81,7 @@
     <section id="features" class="section">
         <div class="section-header">
             <h2 class="section-title">How it works</h2>
-            <p class="section-subtitle">Three simple steps. Zero configuration needed.</p>
+            <p class="section-subtitle">Three simple steps. No config files needed.</p>
         </div>
         <div class="features-grid">
             <div class="feature-card">
@@ -97,7 +97,7 @@
             <div class="feature-card">
                 <div class="feature-icon">🔊</div>
                 <h3>React</h3>
-                <p>When an error is detected, the agent plays a sound. Use the built-in audio or set your own with <code>--sound</code>.</p>
+                <p>When an error is detected, the agent plays your chosen MP3. Supply your own sound URL with <code>--sound &lt;URL&gt;</code> (required).</p>
             </div>
         </div>
     </section>
@@ -124,9 +124,9 @@
                 <div class="step-number">2</div>
                 <div class="step-content">
                     <h3>Install &amp; Start</h3>
-                    <p>Run the binary with the install flag:</p>
+                    <p>Run the binary with a sound URL (<strong>required</strong>):</p>
                     <div class="code-block">
-                        <code>yamete-kudasai-system --install</code>
+                        <code>yamete-kudasai-system --install --sound https://example.com/my-sound.mp3</code>
                         <button class="copy-btn" onclick="copyCode(this)" title="Copy">📋</button>
                     </div>
                 </div>
@@ -134,10 +134,14 @@
             <div class="install-step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                    <h3>Custom Sound (Optional)</h3>
-                    <p>Use your own sound file from a URL:</p>
+                    <h3>Verify</h3>
+                    <p>Check the agent is running and play a test sound:</p>
                     <div class="code-block">
-                        <code>yamete-kudasai-system --install --sound https://example.com/my-sound.mp3</code>
+                        <code>yamete-kudasai-system --status</code>
+                        <button class="copy-btn" onclick="copyCode(this)" title="Copy">📋</button>
+                    </div>
+                    <div class="code-block" style="margin-top:0.5rem;">
+                        <code>yamete-kudasai-system --self-test</code>
                         <button class="copy-btn" onclick="copyCode(this)" title="Copy">📋</button>
                     </div>
                 </div>
@@ -155,12 +159,8 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td><code>--install</code></td>
-                        <td>Install and start the background agent</td>
-                    </tr>
-                    <tr>
-                        <td><code>--install --sound URL</code></td>
-                        <td>Install with a custom sound from a URL</td>
+                        <td><code>--install --sound &lt;URL&gt;</code></td>
+                        <td>Install and start the agent with an MP3 sound URL (required)</td>
                     </tr>
                     <tr>
                         <td><code>--uninstall</code></td>
@@ -168,11 +168,11 @@
                     </tr>
                     <tr>
                         <td><code>--status</code></td>
-                        <td>Show installation status</td>
+                        <td>Show install status, sound path, and hook states</td>
                     </tr>
                     <tr>
                         <td><code>--self-test</code></td>
-                        <td>Play a test sound</td>
+                        <td>Play a test sound to verify audio playback</td>
                     </tr>
                 </tbody>
             </table>
