@@ -34,7 +34,7 @@ pub fn configure_startup(installed_exe: &Path) -> Result<(), String> {
             winreg::enums::KEY_SET_VALUE,
         )
         .map_err(|err| format!("Failed to open startup registry key: {err}"))?;
-    let value = format!("\"{}\" --agent", installed_exe.display());
+    let value = format!("\"{}\" --agent-loop", installed_exe.display());
     run_key
         .set_value(STARTUP_VALUE_NAME, &value)
         .map_err(|err| format!("Failed to write startup entry: {err}"))
@@ -66,31 +66,52 @@ pub fn startup_status() -> String {
 }
 
 pub fn start_agent(installed_exe: &Path) -> Result<(), String> {
-    let mut command = Command::new(installed_exe);
+    let exe = ps_single_quote(&installed_exe.to_string_lossy());
+    let script =
+        format!("Start-Process -FilePath '{exe}' -ArgumentList '--agent-loop' -WindowStyle Hidden");
+
+    let mut command = Command::new("powershell.exe");
     command
-        .arg("--agent")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &script,
+        ])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .creation_flags(CREATE_NO_WINDOW);
 
     command
-        .spawn()
+        .status()
         .map_err(|err| format!("Failed to start agent: {err}"))?;
     Ok(())
 }
 
 pub fn stop_agent() -> Result<(), String> {
-    // Forcefully kill any running agent process by name.
-    // We ignore failures (e.g. if no process is running).
+    let installed_exe = install_dir()?.join(installed_exe_name());
+    let target = ps_single_quote(&installed_exe.to_string_lossy());
     let my_pid = std::process::id();
-    let _ = Command::new("taskkill")
+    let script = format!(
+        "$target = '{target}'; \
+         $current = {my_pid}; \
+         Get-Process -Name 'yamete-kudasai-system' -ErrorAction SilentlyContinue | \
+         Where-Object {{ $_.Id -ne $current -and $_.Path -and [string]::Equals($_.Path, $target, [System.StringComparison]::OrdinalIgnoreCase) }} | \
+         Stop-Process -Force"
+    );
+
+    // Ignore failures, including "not running".
+    let _ = Command::new("powershell.exe")
         .args([
-            "/F",
-            "/IM",
-            installed_exe_name(),
-            "/FI",
-            &format!("PID ne {my_pid}"),
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &script,
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())

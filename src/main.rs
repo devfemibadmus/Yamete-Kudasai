@@ -1,6 +1,11 @@
 mod app;
 mod platform;
 
+use std::io::Write;
+
 fn main() {
-    std::process::exit(app::run());
+    let code = app::run();
+    let _ = std::io::stdout().flush();
+    let _ = std::io::stderr().flush();
+    std::process::exit(code);
 }

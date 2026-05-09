@@ -73,7 +73,7 @@ pub fn startup_status() -> String {
 pub fn start_agent(installed_exe: &Path) -> Result<(), String> {
     let mut command = Command::new(installed_exe);
     command
-        .arg("--agent")
+        .arg("--agent-loop")
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
@@ -128,7 +128,7 @@ fn configure_startup_linux(installed_exe: &Path) -> Result<(), String> {
         "[Desktop Entry]\n\
          Type=Application\n\
          Name=YameteKudasai\n\
-         Exec=\"{}\" --agent\n\
+         Exec=\"{}\" --agent-loop\n\
          Hidden=false\n\
          NoDisplay=true\n\
          X-GNOME-Autostart-enabled=true\n\
@@ -158,7 +158,7 @@ fn configure_startup_macos(installed_exe: &Path) -> Result<(), String> {
     <key>ProgramArguments</key>
     <array>
         <string>{exe}</string>
-        <string>--agent</string>
+        <string>--agent-loop</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

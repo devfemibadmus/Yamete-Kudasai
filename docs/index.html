@@ -97,7 +97,7 @@
             <div class="feature-card">
                 <div class="feature-icon">🔊</div>
                 <h3>React</h3>
-                <p>When an error is detected, the agent plays your chosen MP3. Supply your own sound URL with <code>--sound &lt;URL&gt;</code> (required).</p>
+                <p>When an error is detected, the agent plays the bundled sound by default. Supply your own sound URL with <code>--sound &lt;URL&gt;</code>.</p>
             </div>
         </div>
     </section>
@@ -124,9 +124,9 @@
                 <div class="step-number">2</div>
                 <div class="step-content">
                     <h3>Install &amp; Start</h3>
-                    <p>Run the binary with a sound URL (<strong>required</strong>):</p>
+                    <p>Run the binary to install with the bundled sound. Run it again to uninstall.</p>
                     <div class="code-block">
-                        <code>yamete-kudasai-system --install --sound https://example.com/my-sound.mp3</code>
+                        <code>yamete-kudasai-system</code>
                         <button class="copy-btn" onclick="copyCode(this)" title="Copy">📋</button>
                     </div>
                 </div>
@@ -159,12 +159,20 @@
                 </thead>
                 <tbody>
                     <tr>
+                        <td><code>(no command)</code></td>
+                        <td>Install if missing, uninstall if already installed</td>
+                    </tr>
+                    <tr>
+                        <td><code>--install</code></td>
+                        <td>Install and start the agent with the bundled sound</td>
+                    </tr>
+                    <tr>
                         <td><code>--install --sound &lt;URL&gt;</code></td>
-                        <td>Install and start the agent with an MP3 sound URL (required)</td>
+                        <td>Install and start the agent with a custom MP3 sound URL</td>
                     </tr>
                     <tr>
                         <td><code>--uninstall</code></td>
-                        <td>Remove startup config and shell hooks</td>
+                        <td>Stop the agent and remove installed files, startup config, and shell hooks</td>
                     </tr>
                     <tr>
                         <td><code>--status</code></td>

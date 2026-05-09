@@ -14,21 +14,22 @@ The release binary will be at `target/release/yamete-kudasai-system` (or `.exe` 
 
 ## Usage
 
-Install and start the background agent with a sound URL (required):
+Run the binary with no arguments to toggle installation. It installs when missing and uninstalls when already installed:
 
 ```bash
-yamete-kudasai-system --install --sound https://example.com/your-sound.mp3
+yamete-kudasai-system
 ```
 
 | Command | Description |
 | --- | --- |
-| `--install --sound <URL>` | Install with a sound file from a URL (required) |
-| `--uninstall` | Remove startup config and shell hooks |
+| *(no command)* | Install if missing, uninstall if already installed |
+| `--install` | Install with the bundled sound |
+| `--install --sound <URL>` | Install with a custom sound file from a URL |
+| `--uninstall` | Stop the agent and remove installed files, startup config, and shell hooks |
 | `--status` | Show installation status and sound path |
 | `--self-test` | Trigger a test sound to verify audio playback |
 
-> **Note:** A `--sound <URL>` pointing to an MP3 file is **required** when installing.
-> Browse the [Trending Sounds](https://devfemibadmus.github.io/Yamete-Kudasai/#sounds) section on the website for ready-to-use URLs.
+> **Note:** `--sound <URL>` is optional. Browse the [Trending Sounds](https://devfemibadmus.github.io/Yamete-Kudasai/#sounds) section on the website for ready-to-use custom sound URLs.
 
 ## How It Works
 
@@ -59,7 +60,7 @@ installed_exe_exists: true
 sound_path: /path/to/yamete-kudasai-sound.mp3
 event_file_exists: true
 event_file_size: 1234 bytes
-startup: /path/to/exe --agent
+startup: /path/to/exe --agent-loop
 profile_hooks: windows_powershell=true,pwsh=true,bash=true,zsh=true
 ```
 

@@ -11,6 +11,7 @@ use crate::platform;
 
 pub const EVENT_FILE_NAME: &str = "terminal-errors.log";
 pub const SOUND_FILE_NAME: &str = "yamete-kudasai-sound.mp3";
+const DEFAULT_SOUND_BYTES: &[u8] = include_bytes!("../yamete-kudasai-sound.mp3");
 const LOCK_FILE_NAME: &str = "agent.lock";
 pub const MARKER_START: &str = "# >>> YAMETE_KUDASAI >>>";
 pub const MARKER_END: &str = "# <<< YAMETE_KUDASAI <<<";
@@ -22,21 +23,17 @@ pub fn run() -> i32 {
     let args: Vec<String> = env::args().skip(1).collect();
     let cmd = args.first().map(|v| v.as_str());
     let result = match cmd {
+        None => default_action(),
         Some("--install") => {
             let sound_url = parse_sound_arg(&args);
-            if sound_url.is_none() {
-                Err(String::from(
-                    "Error: --sound <URL> is required for installation.",
-                ))
-            } else {
-                install_and_start(sound_url.as_deref())
-            }
+            install_and_start(sound_url.as_deref())
         }
         Some("--uninstall") => uninstall(),
-        Some("--agent") => run_agent_loop(),
+        Some("--agent") => start_detached_agent(),
+        Some("--agent-loop") => run_agent_loop(),
         Some("--status") => status(),
         Some("--self-test") => self_test(),
-        _ => {
+        Some(_) => {
             print_usage();
             return 0;
         }
@@ -58,16 +55,25 @@ fn print_usage() {
     let exe = env::args()
         .next()
         .unwrap_or_else(|| String::from("yamete-kudasai-system"));
-    println!("Usage: {exe} <command> [options]");
+    println!("Usage: {exe} [command] [options]");
     println!();
     println!("Commands:");
+    println!("  (no command)           Install if missing, uninstall if already installed");
     println!(
         "  --install              Install agent, configure startup, and start background watcher"
     );
     println!("  --install --sound URL  Install with a custom sound file from a URL");
-    println!("  --uninstall            Remove startup config and shell hooks");
+    println!("  --uninstall            Stop agent and remove installed files + hooks");
     println!("  --status               Show current installation status");
     println!("  --self-test            Trigger a test sound to verify audio playback");
+}
+
+fn default_action() -> Result<String, String> {
+    if is_installed()? {
+        uninstall()
+    } else {
+        install_and_start(None)
+    }
 }
 
 fn parse_sound_arg(args: &[String]) -> Option<String> {
@@ -100,11 +106,14 @@ fn install_and_start(sound_url: Option<&str>) -> Result<String, String> {
 
     copy_if_needed(&current_exe, &installed_exe)?;
 
-    // Handle sound: custom URL is now mandatory.
-    let url = sound_url.ok_or_else(|| String::from("--sound <URL> is required."))?;
     let sound_path = install_dir.join(SOUND_FILE_NAME);
-    download_sound(url, &sound_path)?;
-    let sound_msg = format!("Sound installed to: {}", sound_path.display());
+    let sound_msg = if let Some(url) = sound_url {
+        download_sound(url, &sound_path)?;
+        format!("Custom sound installed to: {}", sound_path.display())
+    } else {
+        install_default_sound(&sound_path)?;
+        format!("Bundled sound installed to: {}", sound_path.display())
+    };
 
     let event_file = install_dir.join(EVENT_FILE_NAME);
     ensure_file_exists(&event_file)?;
@@ -123,11 +132,61 @@ fn install_and_start(sound_url: Option<&str>) -> Result<String, String> {
 }
 
 fn uninstall() -> Result<String, String> {
+    let _ = platform::stop_agent();
+    thread::sleep(Duration::from_millis(500));
     platform::remove_startup()?;
     remove_shell_hooks()?;
-    Ok(String::from(
-        "Uninstall steps completed (startup + shell hooks removed).",
+    let files_message = remove_installed_files()?;
+    Ok(format!(
+        "Uninstall steps completed (agent stopped, startup + shell hooks removed, {files_message})."
     ))
+}
+
+fn is_installed() -> Result<bool, String> {
+    let install_dir = platform::install_dir()?;
+    let installed_exe = install_dir.join(platform::installed_exe_name());
+    let sound_path = install_dir.join(SOUND_FILE_NAME);
+    let event_file = install_dir.join(EVENT_FILE_NAME);
+
+    Ok(installed_exe.exists() || sound_path.exists() || event_file.exists())
+}
+
+fn start_detached_agent() -> Result<String, String> {
+    let current_exe =
+        env::current_exe().map_err(|err| format!("Failed to get current exe path: {err}"))?;
+    platform::start_agent(&current_exe)?;
+    Ok(String::from("Agent started in the background."))
+}
+
+fn remove_installed_files() -> Result<String, String> {
+    let install_dir = platform::install_dir()?;
+    if !install_dir.exists() {
+        return Ok(String::from("installed files already removed"));
+    }
+
+    let current_exe =
+        env::current_exe().map_err(|err| format!("Failed to get current exe path: {err}"))?;
+    if is_path_inside_dir(&current_exe, &install_dir) {
+        return Ok(format!(
+            "installed files left in place because this executable is running from {}",
+            install_dir.display()
+        ));
+    }
+
+    fs::remove_dir_all(&install_dir).map_err(|err| {
+        format!(
+            "Failed to remove install dir '{}': {err}",
+            install_dir.display()
+        )
+    })?;
+    Ok(String::from("installed files removed"))
+}
+
+fn is_path_inside_dir(path: &Path, dir: &Path) -> bool {
+    match (path.canonicalize(), dir.canonicalize()) {
+        (Ok(path), Ok(dir)) => path.starts_with(dir),
+        _ => path.starts_with(dir),
+    }
 }
 
 fn status() -> Result<String, String> {
@@ -209,7 +268,7 @@ fn run_agent_loop() -> Result<String, String> {
     let sound_path = install_dir.join(SOUND_FILE_NAME);
     if !sound_path.exists() {
         return Err(format!(
-            "Sound file not found: {}. Please re-run --install --sound <URL>",
+            "Sound file not found: {}. Please re-run --install",
             sound_path.display()
         ));
     }
@@ -296,6 +355,15 @@ fn download_sound(url: &str, dest: &Path) -> Result<(), String> {
         bytes.len()
     );
     Ok(())
+}
+
+fn install_default_sound(dest: &Path) -> Result<(), String> {
+    fs::write(dest, DEFAULT_SOUND_BYTES).map_err(|err| {
+        format!(
+            "Failed to save bundled sound to '{}': {err}",
+            dest.display()
+        )
+    })
 }
 
 fn install_shell_hooks(event_file: &Path) -> Result<(), String> {
